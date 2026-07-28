@@ -373,7 +373,7 @@ function cardEl(i){
     <div class="meta"><span class="pri ${i.priority||'med'}">${PRI[i.priority||'med']}</span>
     ${ci?`<span class="daysbadge ${ci.cls}">✉ ${ci.label}</span>`:''}
     ${na.desc?`<span class="next ${overdue?'overdue':''}">⏭ ${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:''}</div>
-    <div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div>`;
+    ${i.stage==='research'?`<div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div>`:''}`;
   c.onclick=()=>openDrawer(i.id);
   c.querySelectorAll('.int').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const v=b.dataset.int;i.interest=(i.interest===v?'':v);i.updatedAt=todayISO();scheduleSave();render();}));
   c.addEventListener('dragstart',e=>e.dataTransfer.setData('text/id',i.id));
@@ -398,7 +398,7 @@ function renderList(){
       <td><span class="pri ${i.priority||'med'}">${PRI[i.priority||'med']}</span></td>
       <td>${ci?`<span class="daysbadge ${ci.cls}">${ci.label}</span>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>
       <td>${na.desc?`<span class="${overdue?'next overdue':''}">${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>
-      <td><div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div></td>`;
+      <td>${i.stage==='research'?`<div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>`;
     tr.querySelectorAll('.int').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const v=b.dataset.int;i.interest=(i.interest===v?'':v);i.updatedAt=todayISO();scheduleSave();render();}));
     tr.onclick=()=>openDrawer(i.id);tb.appendChild(tr);
   }
@@ -431,7 +431,7 @@ function renderDrawer(){
      <div class="row"><div class="field"><label>Fase</label><select id="f_stage">${STAGES.map(s=>`<option value="${s.id}" ${s.id===i.stage?'selected':''}>${s.label}</option>`).join('')}</select></div>
        <div class="field"><label>Prioritet</label><select id="f_priority">${Object.entries(PRI).map(([k,v])=>`<option value="${k}" ${k===(i.priority||'med')?'selected':''}>${v}</option>`).join('')}</select></div>
        <div class="field"><label>Kontaktet dato</label><input type="date" id="f_contactedAt" value="${esc(i.contactedAt||'')}"></div></div>
-     <div class="field"><label>Interesse</label><div class="seg" id="f_interest"><button data-v="yes">Interessant</button><button data-v="">Ikke vurderet</button><button data-v="no">Ikke interessant</button></div></div>
+     ${i.stage==='research'?`<div class="field"><label>Interesse</label><div class="seg" id="f_interest"><button data-v="yes">Interessant</button><button data-v="">Ikke vurderet</button><button data-v="no">Ikke interessant</button></div></div>`:''}
      <div class="sect"><h3>Kontaktpersoner <button class="add" id="addContact">+ tilføj</button></h3><div id="contacts"></div></div>
      <div class="sect"><h3>Næste handling</h3><div class="row">
        <div class="field" style="flex:2"><label>Hvad</label><input id="f_na_desc" value="${esc((i.nextAction||{}).desc)}" placeholder="fx Send opfølgning"></div>
@@ -448,9 +448,11 @@ function renderDrawer(){
   bindField(d.querySelector('#f_na_desc'),i.nextAction,'desc');bindField(d.querySelector('#f_na_due'),i.nextAction,'due');
   bindField(d.querySelector('#f_contactedAt'),i,'contactedAt');
   const seg=d.querySelector('#f_interest');
-  const paintSeg=()=>seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v||'')===(i.interest||'')));
-  paintSeg();
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{i.interest=b.dataset.v||'';i.updatedAt=todayISO();paintSeg();scheduleSave();render();}));
+  if(seg){
+    const paintSeg=()=>seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v||'')===(i.interest||'')));
+    paintSeg();
+    seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{i.interest=b.dataset.v||'';i.updatedAt=todayISO();paintSeg();scheduleSave();render();}));
+  }
   d.querySelector('#addContact').onclick=()=>{i.contacts.push({name:'',title:'',role:'',email:'',phone:'',sourceUrl:'',notes:''});scheduleSave();renderContacts();};
   d.querySelector('#addAct').onclick=()=>{i.activities.unshift({date:todayISO(),type:'note',summary:''});scheduleSave();renderActs();};
   renderContacts();renderActs();
