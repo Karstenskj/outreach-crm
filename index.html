@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Outreach CRM</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#1c2430; --muted:#6b7684; --line:#e4e7ec;
+    --accent:#2563eb; --accent-ink:#fff; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+    --radius:12px; --danger:#dc2626;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0f141b;--panel:#171e28;--ink:#e6eaf0;--muted:#95a1b1;--line:#26303c;--shadow:0 1px 3px rgba(0,0,0,.4);}
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:inherit}
+  a{color:var(--accent)}
+
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+  header .spacer{flex:1}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:9px;font-size:13px;font-weight:550;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--muted)}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .btn.danger{color:var(--danger);border-color:transparent}
+  .btn.danger:hover{border-color:var(--danger)}
+  input.search,select.filter{border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:7px 10px;font-size:13px}
+  input.search{width:200px}
+
+  .status{font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;white-space:nowrap}
+  .status.saved{color:#15803d;background:rgba(34,197,94,.12)}
+  .status.saving{color:#b45309;background:rgba(245,158,11,.14)}
+  .status.dirty{color:#b45309;background:rgba(245,158,11,.14)}
+  .status.error{color:var(--danger);background:rgba(220,38,38,.12)}
+  .status.off{color:var(--muted);background:var(--bg)}
+
+  /* board */
+  .board{display:flex;gap:12px;padding:16px;overflow-x:auto;height:calc(100vh - 55px);align-items:flex-start}
+  .col{flex:0 0 268px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;max-height:100%}
+  .col-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0}
+  .col-head .dot{width:9px;height:9px;border-radius:50%}
+  .col-head .name{font-weight:650;font-size:13px}
+  .col-head .count{margin-left:auto;font-size:12px;color:var(--muted);background:var(--bg);border-radius:20px;padding:1px 8px;font-weight:600}
+  .col-body{padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:40px}
+  .col-body.drop{outline:2px dashed var(--accent);outline-offset:-4px;border-radius:8px}
+
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 11px;cursor:pointer}
+  .card:hover{border-color:var(--muted)}
+  .card .title{font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:6px}
+  .card .flag{font-size:11px;font-weight:700;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:0 5px;line-height:16px}
+  .card .sub{color:var(--muted);font-size:12px;margin-top:3px}
+  .card .meta{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+  .pri{font-size:11px;font-weight:650;padding:1px 7px;border-radius:20px}
+  .pri.high{color:#b91c1c;background:rgba(220,38,38,.12)}
+  .pri.med{color:#b45309;background:rgba(245,158,11,.14)}
+  .pri.low{color:var(--muted);background:var(--panel);border:1px solid var(--line)}
+  .next{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:4px}
+  .next.overdue{color:var(--danger);font-weight:600}
+
+  .addcard{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:9px;padding:8px;font-size:12.5px;width:100%;text-align:left}
+  .addcard:hover{color:var(--ink);border-color:var(--muted)}
+
+  /* drawer */
+  .scrim{position:fixed;inset:0;background:rgba(10,15,22,.4);opacity:0;pointer-events:none;transition:.15s;z-index:30}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:460px;max-width:96vw;background:var(--panel);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.12);transform:translateX(100%);transition:.18s;z-index:31;display:flex;flex-direction:column}
+  .drawer.open{transform:none}
+  .drawer-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .drawer-body{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+  .field label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:650;margin-bottom:4px}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font-size:14px}
+  .field textarea{min-height:64px;resize:vertical}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .sect{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .sect h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);display:flex;align-items:center}
+  .sect h3 .add{margin-left:auto;font-size:12px;color:var(--accent);text-transform:none;letter-spacing:0;font-weight:600;border:0;background:none}
+  .subcard{border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px;background:var(--bg)}
+  .subcard .top{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .subcard .top input{font-weight:600}
+  .mini{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:6px 8px;font-size:13px;width:100%}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .rm{border:0;background:none;color:var(--muted);font-size:16px;line-height:1;padding:2px 4px}
+  .rm:hover{color:var(--danger)}
+  .act{display:flex;gap:8px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)}
+  .act .d{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:26px}
+
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(10,15,22,.5);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+  .modal.open{display:flex}
+  .modal .box{background:var(--panel);border-radius:14px;padding:22px;width:480px;max-width:100%;box-shadow:var(--shadow)}
+  .modal h2{margin:0 0 6px;font-size:18px}
+  .modal p{color:var(--muted);font-size:13.5px;margin:0 0 14px}
+  .modal ol{font-size:13px;color:var(--muted);padding-left:18px;margin:0 0 14px}
+  .modal ol li{margin:5px 0}
+  .modal code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:550;opacity:0;pointer-events:none;transition:.2s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎓 Outreach CRM</h1>
+  <input class="search" id="search" placeholder="Søg institution / kontakt…">
+  <select class="filter" id="country"><option value="">Alle lande</option></select>
+  <div class="spacer"></div>
+  <span class="status off" id="status">Ikke forbundet</span>
+  <button class="btn" id="reload" title="Hent nyeste fra GitHub">↻</button>
+  <button class="btn" id="settings" title="Adgangsnøgle">⚙︎</button>
+</header>
+
+<div class="board" id="board"></div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+
+<div class="modal" id="tokenModal">
+  <div class="box">
+    <h2>Forbind til GitHub</h2>
+    <p>Appen gemmer dine data i det private repo <code>Karstenskj/outreach-crm-data</code>. Indsæt en adgangsnøgle (fine-grained token) med adgang til det repo:</p>
+    <ol>
+      <li>Gå til <b>github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new</b></li>
+      <li>Repository access: <b>Only select repositories → outreach-crm-data</b></li>
+      <li>Permissions → Repository → <b>Contents: Read and write</b></li>
+      <li>Generér, kopiér nøglen (<code>github_pat_…</code>) og indsæt her:</li>
+    </ol>
+    <div class="field"><input id="tokenInput" placeholder="github_pat_…" autocomplete="off"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn ghost" id="tokenCancel">Annuller</button>
+      <button class="btn primary" id="tokenSave">Gem & forbind</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CFG = { owner:'Karstenskj', repo:'outreach-crm-data', path:'data.json', branch:'main' };
+const STAGES = [
+  {id:'research',      label:'Emner',        color:'#64748b'},
+  {id:'contact_found', label:'Kontakt fundet',color:'#0ea5e9'},
+  {id:'contacted',     label:'Kontaktet',    color:'#6366f1'},
+  {id:'in_dialogue',   label:'I dialog',     color:'#f59e0b'},
+  {id:'proposal_sent', label:'Tilbud sendt', color:'#a855f7'},
+  {id:'won',           label:'Vundet',       color:'#22c55e'},
+  {id:'lost',          label:'Tabt',         color:'#ef4444'},
+];
+const PRI = {high:'Høj', med:'Middel', low:'Lav'};
+
+let state = { data:{version:1, institutions:[]}, sha:null, selectedId:null, dirty:false, saveTimer:null };
+
+// ---------- token ----------
+const token = { get:()=>localStorage.getItem('crm_pat')||'', set:v=>localStorage.setItem('crm_pat',v) };
+
+// ---------- utils ----------
+const $ = s=>document.querySelector(s);
+const enc = s=>btoa(unescape(encodeURIComponent(s)));
+const dec = b=>decodeURIComponent(escape(atob(b)));
+const esc = s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = ()=> (crypto.randomUUID? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
+const todayISO = ()=> new Date().toISOString().slice(0,10);
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function setStatus(kind,text){ const s=$('#status'); s.className='status '+kind; s.textContent=text; }
+function inst(id){ return state.data.institutions.find(i=>i.id===id); }
+
+// ---------- GitHub API ----------
+async function gh(method, body){
+  const url=`https://api.github.com/repos/${CFG.owner}/${CFG.repo}/contents/${CFG.path}`+(method==='GET'?`?ref=${CFG.branch}`:'');
+  const r = await fetch(url,{
+    method,
+    headers:{ 'Authorization':'Bearer '+token.get(), 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' },
+    body: body? JSON.stringify(body):undefined
+  });
+  if(!r.ok){ const e=new Error('gh '+r.status); e.status=r.status; try{e.detail=(await r.json()).message}catch{} throw e; }
+  return r.json();
+}
+
+async function load(){
+  if(!token.get()){ setStatus('off','Ikke forbundet'); openToken(); return; }
+  setStatus('saving','Henter…');
+  try{
+    const res = await gh('GET');
+    state.sha = res.sha;
+    state.data = JSON.parse(dec(res.content));
+    if(!state.data.institutions) state.data.institutions=[];
+    state.dirty=false; setStatus('saved','Gemt ✓'); render();
+  }catch(e){
+    if(e.status===404){ // file mangler → start tomt, opret ved første gem
+      state.sha=null; state.data={version:1,institutions:[]}; setStatus('saved','Nyt (tomt)'); render();
+    }else if(e.status===401||e.status===403){
+      setStatus('error','Nøgle afvist'); toast('Adgangsnøglen virker ikke ('+e.status+') — tjek rettigheder.'); openToken();
+    }else{ setStatus('error','Fejl'); toast('Kunne ikke hente: '+(e.detail||e.message)); }
+  }
+}
+
+function scheduleSave(){
+  state.dirty=true; setStatus('dirty','Ugemte ændringer');
+  localStorage.setItem('crm_cache', JSON.stringify(state.data)); // lokal backup
+  clearTimeout(state.saveTimer);
+  state.saveTimer=setTimeout(save, 1400);
+}
+
+async function save(){
+  if(!token.get()){ openToken(); return; }
+  clearTimeout(state.saveTimer);
+  setStatus('saving','Gemmer…');
+  state.data.updated = new Date().toISOString();
+  try{
+    const res = await gh('PUT', {
+      message:'Opdater CRM-data', branch:CFG.branch,
+      content: enc(JSON.stringify(state.data,null,2)),
+      ...(state.sha? {sha:state.sha}:{})
+    });
+    state.sha = res.content.sha; state.dirty=false;
+    setStatus('saved','Gemt ✓');
+  }catch(e){
+    if(e.status===409){ setStatus('error','Konflikt'); toast('Nyere version på GitHub. Dine ændringer ligger i localStorage — tryk ↻ for at genindlæse.'); }
+    else if(e.status===401||e.status===403){ setStatus('error','Nøgle afvist'); openToken(); }
+    else{ setStatus('error','Fejl'); toast('Kunne ikke gemme: '+(e.detail||e.message)); }
+  }
+}
+
+// ---------- render board ----------
+function countries(){ return [...new Set(state.data.institutions.map(i=>i.country).filter(Boolean))].sort(); }
+function matches(i){
+  const q=$('#search').value.trim().toLowerCase();
+  const c=$('#country').value;
+  if(c && i.country!==c) return false;
+  if(!q) return true;
+  const hay=[i.name,i.city,...(i.contacts||[]).flatMap(k=>[k.name,k.email,k.title])].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function render(){
+  // country filter options
+  const sel=$('#country'), cur=sel.value;
+  sel.innerHTML='<option value="">Alle lande</option>'+countries().map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+
+  const board=$('#board'); board.innerHTML='';
+  for(const st of STAGES){
+    const items=state.data.institutions.filter(i=>i.stage===st.id && matches(i));
+    const col=document.createElement('div'); col.className='col'; col.dataset.stage=st.id;
+    col.innerHTML=`<div class="col-head"><span class="dot" style="background:${st.color}"></span>
+      <span class="name">${st.label}</span><span class="count">${items.length}</span></div>
+      <div class="col-body" data-stage="${st.id}"></div>`;
+    const body=col.querySelector('.col-body');
+    items.sort((a,b)=>({high:0,med:1,low:2}[a.priority||'med'])-({high:0,med:1,low:2}[b.priority||'med']));
+    for(const i of items) body.appendChild(cardEl(i));
+    const add=document.createElement('button'); add.className='addcard'; add.textContent='+ Ny institution';
+    add.onclick=()=>addInstitution(st.id); body.appendChild(add);
+    // drop target
+    body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('drop')});
+    body.addEventListener('dragleave',()=>body.classList.remove('drop'));
+    body.addEventListener('drop',e=>{e.preventDefault();body.classList.remove('drop');
+      const id=e.dataTransfer.getData('text/id'); const it=inst(id);
+      if(it && it.stage!==st.id){ it.stage=st.id; it.updatedAt=todayISO(); scheduleSave(); render(); }});
+    board.appendChild(col);
+  }
+}
+
+function cardEl(i){
+  const c=document.createElement('div'); c.className='card'; c.draggable=true;
+  const primary=(i.contacts&&i.contacts[0])||{};
+  const na=i.nextAction||{};
+  const overdue = na.due && na.due < todayISO();
+  c.innerHTML=`
+    <div class="title">${esc(i.name)||'(uden navn)'} <span class="flag">${esc(i.country||'?')}</span></div>
+    ${primary.name?`<div class="sub">👤 ${esc(primary.name)}${primary.title?' · '+esc(primary.title):''}</div>`:'<div class="sub" style="opacity:.7">Ingen kontakt endnu</div>'}
+    <div class="meta">
+      <span class="pri ${i.priority||'med'}">${PRI[i.priority||'med']}</span>
+      ${na.desc?`<span class="next ${overdue?'overdue':''}">⏭ ${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:''}
+    </div>`;
+  c.onclick=()=>openDrawer(i.id);
+  c.addEventListener('dragstart',e=>e.dataTransfer.setData('text/id',i.id));
+  return c;
+}
+
+// ---------- CRUD ----------
+function addInstitution(stage){
+  const i={ id:uid(), name:'', country: $('#country').value||'DK', city:'', website:'',
+    stage:stage||'research', priority:'med', contacts:[], activities:[], nextAction:{desc:'',due:''}, notes:'',
+    createdAt:todayISO(), updatedAt:todayISO() };
+  state.data.institutions.push(i); scheduleSave(); render(); openDrawer(i.id);
+}
+function deleteInstitution(id){
+  if(!confirm('Slet denne institution og alle noter?')) return;
+  state.data.institutions=state.data.institutions.filter(x=>x.id!==id);
+  scheduleSave(); closeDrawer(); render();
+}
+
+// ---------- drawer ----------
+function openDrawer(id){
+  state.selectedId=id; const i=inst(id); if(!i) return;
+  $('#scrim').classList.add('open'); const d=$('#drawer'); d.classList.add('open'); d.setAttribute('aria-hidden','false');
+  renderDrawer();
+}
+function closeDrawer(){
+  $('#scrim').classList.remove('open'); const d=$('#drawer'); d.classList.remove('open'); d.setAttribute('aria-hidden','true');
+  state.selectedId=null;
+}
+function bindField(elm,obj,key){ elm.addEventListener('input',()=>{obj[key]=elm.value; obj===inst(state.selectedId)&&(inst(state.selectedId).updatedAt=todayISO()); scheduleSave(); softRefreshCard();}); }
+function softRefreshCard(){ /* opdater board uden at lukke drawer */ render(); }
+
+function renderDrawer(){
+  const i=inst(state.selectedId); if(!i) return;
+  const d=$('#drawer');
+  d.innerHTML=`
+   <div class="drawer-head">
+     <button class="btn ghost" id="dClose">←</button>
+     <b style="flex:1">${esc(i.name)||'Ny institution'}</b>
+     <button class="btn danger" id="dDelete">Slet</button>
+   </div>
+   <div class="drawer-body">
+     <div class="field"><label>Institution</label><input id="f_name" value="${esc(i.name)}" placeholder="fx Aarhus Universitet"></div>
+     <div class="row">
+       <div class="field"><label>Land</label><input id="f_country" value="${esc(i.country)}" placeholder="DK / SE / NO / DE"></div>
+       <div class="field"><label>By</label><input id="f_city" value="${esc(i.city)}"></div>
+     </div>
+     <div class="field"><label>Website</label><input id="f_website" value="${esc(i.website)}" placeholder="https://…"></div>
+     <div class="row">
+       <div class="field"><label>Fase</label><select id="f_stage">${STAGES.map(s=>`<option value="${s.id}" ${s.id===i.stage?'selected':''}>${s.label}</option>`).join('')}</select></div>
+       <div class="field"><label>Prioritet</label><select id="f_priority">${Object.entries(PRI).map(([k,v])=>`<option value="${k}" ${k===(i.priority||'med')?'selected':''}>${v}</option>`).join('')}</select></div>
+     </div>
+
+     <div class="sect">
+       <h3>Kontaktpersoner <button class="add" id="addContact">+ tilføj</button></h3>
+       <div id="contacts"></div>
+     </div>
+
+     <div class="sect">
+       <h3>Næste handling</h3>
+       <div class="row">
+         <div class="field" style="flex:2"><label>Hvad</label><input id="f_na_desc" value="${esc((i.nextAction||{}).desc)}" placeholder="fx Send opfølgning"></div>
+         <div class="field"><label>Deadline</label><input type="date" id="f_na_due" value="${esc((i.nextAction||{}).due)}"></div>
+       </div>
+     </div>
+
+     <div class="sect">
+       <h3>Aktivitet / log <button class="add" id="addAct">+ tilføj</button></h3>
+       <div id="acts"></div>
+     </div>
+
+     <div class="field"><label>Noter</label><textarea id="f_notes" placeholder="Fri tekst…">${esc(i.notes)}</textarea></div>
+   </div>`;
+
+  d.querySelector('#dClose').onclick=closeDrawer;
+  d.querySelector('#dDelete').onclick=()=>deleteInstitution(i.id);
+  [['f_name','name'],['f_country','country'],['f_city','city'],['f_website','website'],['f_notes','notes']]
+    .forEach(([id,k])=>bindField(d.querySelector('#'+id),i,k));
+  d.querySelector('#f_stage').addEventListener('change',e=>{i.stage=e.target.value;i.updatedAt=todayISO();scheduleSave();render();});
+  d.querySelector('#f_priority').addEventListener('change',e=>{i.priority=e.target.value;scheduleSave();render();});
+  if(!i.nextAction)i.nextAction={desc:'',due:''};
+  bindField(d.querySelector('#f_na_desc'),i.nextAction,'desc');
+  bindField(d.querySelector('#f_na_due'),i.nextAction,'due');
+  d.querySelector('#addContact').onclick=()=>{i.contacts.push({name:'',title:'',role:'',email:'',phone:'',sourceUrl:'',notes:''});scheduleSave();renderContacts();};
+  d.querySelector('#addAct').onclick=()=>{i.activities.unshift({date:todayISO(),type:'note',summary:''});scheduleSave();renderActs();};
+  renderContacts(); renderActs();
+}
+
+function renderContacts(){
+  const i=inst(state.selectedId); const box=$('#contacts'); box.innerHTML='';
+  if(!i.contacts.length){ box.innerHTML='<div class="empty">Ingen kontakter endnu</div>'; return; }
+  i.contacts.forEach((c,idx)=>{
+    const el=document.createElement('div'); el.className='subcard';
+    el.innerHTML=`
+      <div class="top"><input class="mini" data-k="name" placeholder="Navn" value="${esc(c.name)}"><button class="rm" title="Fjern">×</button></div>
+      <div class="grid2">
+        <input class="mini" data-k="title" placeholder="Titel" value="${esc(c.title)}">
+        <input class="mini" data-k="role" placeholder="Rolle (fx meritansvarlig)" value="${esc(c.role)}">
+        <input class="mini" data-k="email" placeholder="Email" value="${esc(c.email)}">
+        <input class="mini" data-k="phone" placeholder="Telefon" value="${esc(c.phone)}">
+      </div>
+      <input class="mini" data-k="sourceUrl" placeholder="Kilde-URL (hvor fandt vi personen)" value="${esc(c.sourceUrl)}" style="margin-top:8px">
+      <input class="mini" data-k="notes" placeholder="Note" value="${esc(c.notes)}" style="margin-top:8px">`;
+    el.querySelectorAll('input[data-k]').forEach(inp=>inp.addEventListener('input',()=>{c[inp.dataset.k]=inp.value;scheduleSave();if(inp.dataset.k==='name')render();}));
+    el.querySelector('.rm').onclick=()=>{i.contacts.splice(idx,1);scheduleSave();renderContacts();render();};
+    box.appendChild(el);
+  });
+}
+
+function renderActs(){
+  const i=inst(state.selectedId); const box=$('#acts'); box.innerHTML='';
+  if(!i.activities.length){ box.innerHTML='<div class="empty">Ingen aktivitet endnu</div>'; return; }
+  i.activities.forEach((a,idx)=>{
+    const el=document.createElement('div'); el.className='act';
+    el.innerHTML=`<input class="mini" type="date" style="width:140px" value="${esc(a.date)}">
+      <input class="mini" placeholder="Hvad skete der?" value="${esc(a.summary)}">
+      <button class="rm">×</button>`;
+    const [dt,sm]=el.querySelectorAll('input');
+    dt.addEventListener('input',()=>{a.date=dt.value;scheduleSave();});
+    sm.addEventListener('input',()=>{a.summary=sm.value;scheduleSave();});
+    el.querySelector('.rm').onclick=()=>{i.activities.splice(idx,1);scheduleSave();renderActs();};
+    box.appendChild(el);
+  });
+}
+
+// ---------- token modal ----------
+function openToken(){ $('#tokenInput').value=token.get(); $('#tokenModal').classList.add('open'); }
+$('#settings').onclick=openToken;
+$('#tokenCancel').onclick=()=>$('#tokenModal').classList.remove('open');
+$('#tokenSave').onclick=()=>{ token.set($('#tokenInput').value.trim()); $('#tokenModal').classList.remove('open'); load(); };
+$('#reload').onclick=load;
+$('#scrim').onclick=closeDrawer;
+$('#search').addEventListener('input',render);
+$('#country').addEventListener('change',render);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){closeDrawer();$('#tokenModal').classList.remove('open');} });
+window.addEventListener('beforeunload',e=>{ if(state.dirty){e.preventDefault();e.returnValue='';} });
+
+load();
+</script>
+</body>
+</html>
