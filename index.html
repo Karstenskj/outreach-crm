@@ -115,6 +115,21 @@
   .daysbadge.green{color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}
   .daysbadge.red{color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent)}
   .daysbadge.neutral{color:var(--text-secondary);background:var(--surface-muted)}
+  .intctl{display:flex;gap:6px;margin-top:8px}
+  .int{font-size:11px;font-weight:600;padding:3px 8px;border-radius:2px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-secondary);white-space:nowrap}
+  .int:hover{background:var(--surface-muted);color:var(--foreground)}
+  .int.yes.on{background:color-mix(in srgb,var(--ok) 16%,transparent);border-color:var(--ok);color:var(--ok)}
+  .int.no.on{background:color-mix(in srgb,var(--danger) 14%,transparent);border-color:var(--danger);color:var(--danger)}
+  .card.dim{opacity:.5}
+  .card.fav{border-left:3px solid var(--ok)}
+  .dimrow{opacity:.5}
+  .seg{display:flex;border:1px solid var(--border-strong);border-radius:2px;overflow:hidden}
+  .seg button{flex:1;border:0;border-right:1px solid var(--border-strong);background:var(--surface);color:var(--text-secondary);padding:7px 6px;font-size:12px;font-weight:600}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:var(--surface-muted)}
+  .seg button.on{background:var(--selected-bg);color:var(--foreground)}
+  .seg button[data-v="yes"].on{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+  .seg button[data-v="no"].on{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
   .addcard{border:1px dashed var(--border-strong);background:transparent;color:var(--text-tertiary);border-radius:2px;padding:8px;font-size:12.5px;width:100%;text-align:left}
   .addcard:hover{color:var(--foreground);border-color:var(--text-secondary)}
 
@@ -207,6 +222,7 @@
       <div class="spacer"></div>
       <input class="input-base search" id="search" placeholder="Søg institution / kontakt…">
       <select class="input-base" id="country" style="width:auto"><option value="">Alle lande</option></select>
+      <select class="input-base" id="interest" style="width:auto"><option value="">Al interesse</option><option value="yes">Interessante</option><option value="none">Ikke vurderet</option><option value="no">Ikke interessante</option></select>
       <span class="status off" id="status">Ikke forbundet</span>
       <button class="btn-icon" id="reload" title="Hent nyeste fra GitHub"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button>
       <button class="btn-primary" id="addBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ny institution</button>
@@ -314,8 +330,12 @@ async function save(){
 
 /* ===== filter / render ===== */
 function countries(){return [...new Set(state.data.institutions.map(i=>i.country).filter(Boolean))].sort();}
-function matches(i){const q=$('#search').value.trim().toLowerCase(),c=$('#country').value;
-  if(c&&i.country!==c)return false;if(!q)return true;
+function matches(i){const q=$('#search').value.trim().toLowerCase(),c=$('#country').value,intf=$('#interest').value,it=i.interest||'';
+  if(c&&i.country!==c)return false;
+  if(intf==='yes'&&it!=='yes')return false;
+  if(intf==='no'&&it!=='no')return false;
+  if(intf==='none'&&it!=='')return false;
+  if(!q)return true;
   return [i.name,i.city,...(i.contacts||[]).flatMap(k=>[k.name,k.email,k.title])].join(' ').toLowerCase().includes(q);}
 function priRank(p){return {high:0,med:1,low:2}[p||'med'];}
 
@@ -346,14 +366,16 @@ function renderBoard(){
   }
 }
 function cardEl(i){
-  const c=document.createElement('div');c.className='card';c.draggable=true;
+  const c=document.createElement('div');c.className='card'+(i.interest==='no'?' dim':i.interest==='yes'?' fav':'');c.draggable=true;
   const p=(i.contacts&&i.contacts[0])||{},na=i.nextAction||{},overdue=na.due&&na.due<todayISO(),ci=contactInfo(i);
   c.innerHTML=`<div class="title">${esc(i.name)||'(uden navn)'} <span class="flag">${esc(i.country||'?')}</span></div>
     ${p.name?`<div class="sub">👤 ${esc(p.name)}${p.title?' · '+esc(p.title):''}</div>`:'<div class="sub" style="opacity:.7">Ingen kontakt endnu</div>'}
     <div class="meta"><span class="pri ${i.priority||'med'}">${PRI[i.priority||'med']}</span>
     ${ci?`<span class="daysbadge ${ci.cls}">✉ ${ci.label}</span>`:''}
-    ${na.desc?`<span class="next ${overdue?'overdue':''}">⏭ ${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:''}</div>`;
+    ${na.desc?`<span class="next ${overdue?'overdue':''}">⏭ ${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:''}</div>
+    <div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div>`;
   c.onclick=()=>openDrawer(i.id);
+  c.querySelectorAll('.int').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const v=b.dataset.int;i.interest=(i.interest===v?'':v);i.updatedAt=todayISO();scheduleSave();render();}));
   c.addEventListener('dragstart',e=>e.dataTransfer.setData('text/id',i.id));
   return c;
 }
@@ -362,19 +384,22 @@ function renderList(){
   const items=state.data.institutions.filter(matches).sort((a,b)=>STAGES.findIndex(s=>s.id===a.stage)-STAGES.findIndex(s=>s.id===b.stage)||priRank(a.priority)-priRank(b.priority));
   const view=$('#view');
   view.innerHTML=`<div class="listwrap"><table class="list"><thead><tr>
-    <th>Institution</th><th>Land</th><th>Kontakt</th><th>Fase</th><th>Prioritet</th><th>Sidst kontaktet</th><th>Næste handling</th></tr></thead><tbody></tbody></table></div>`;
+    <th>Institution</th><th>Land</th><th>Kontakt</th><th>Fase</th><th>Prioritet</th><th>Sidst kontaktet</th><th>Næste handling</th><th>Interesse</th></tr></thead><tbody></tbody></table></div>`;
   const tb=view.querySelector('tbody');
-  if(!items.length){tb.innerHTML='<tr><td colspan="7"><div class="empty">Ingen institutioner endnu</div></td></tr>';return;}
+  if(!items.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">Ingen institutioner endnu</div></td></tr>';return;}
   for(const i of items){
     const st=stageOf(i.stage),p=(i.contacts&&i.contacts[0])||{},na=i.nextAction||{},overdue=na.due&&na.due<todayISO(),ci=contactInfo(i);
     const tr=document.createElement('tr');
+    if(i.interest==='no')tr.classList.add('dimrow');
     tr.innerHTML=`<td><b>${esc(i.name)||'(uden navn)'}</b></td>
       <td>${esc(i.country||'—')}</td>
       <td>${p.name?esc(p.name)+(p.title?`<span style="color:var(--text-secondary)"> · ${esc(p.title)}</span>`:''):'<span style="color:var(--text-tertiary)">—</span>'}</td>
       <td><span class="stagecell"><span class="dot" style="background:${st.color}"></span>${st.label}</span></td>
       <td><span class="pri ${i.priority||'med'}">${PRI[i.priority||'med']}</span></td>
       <td>${ci?`<span class="daysbadge ${ci.cls}">${ci.label}</span>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>
-      <td>${na.desc?`<span class="${overdue?'next overdue':''}">${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>`;
+      <td>${na.desc?`<span class="${overdue?'next overdue':''}">${esc(na.desc)}${na.due?' · '+esc(na.due):''}</span>`:'<span style="color:var(--text-tertiary)">—</span>'}</td>
+      <td><div class="intctl"><button class="int yes ${i.interest==='yes'?'on':''}" data-int="yes">Interessant</button><button class="int no ${i.interest==='no'?'on':''}" data-int="no">Ikke</button></div></td>`;
+    tr.querySelectorAll('.int').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const v=b.dataset.int;i.interest=(i.interest===v?'':v);i.updatedAt=todayISO();scheduleSave();render();}));
     tr.onclick=()=>openDrawer(i.id);tb.appendChild(tr);
   }
 }
@@ -382,7 +407,7 @@ function renderList(){
 /* ===== CRUD ===== */
 function addInstitution(stage){
   const i={id:uid(),name:'',country:$('#country').value||'DK',city:'',website:'',stage:stage||'research',priority:'med',
-    contacts:[],activities:[],nextAction:{desc:'',due:''},contactedAt:'',notes:'',createdAt:todayISO(),updatedAt:todayISO()};
+    contacts:[],activities:[],nextAction:{desc:'',due:''},contactedAt:'',interest:'',notes:'',createdAt:todayISO(),updatedAt:todayISO()};
   state.data.institutions.push(i);scheduleSave();render();openDrawer(i.id);
 }
 function deleteInstitution(id){if(!confirm('Slet denne institution og alle noter?'))return;
@@ -406,6 +431,7 @@ function renderDrawer(){
      <div class="row"><div class="field"><label>Fase</label><select id="f_stage">${STAGES.map(s=>`<option value="${s.id}" ${s.id===i.stage?'selected':''}>${s.label}</option>`).join('')}</select></div>
        <div class="field"><label>Prioritet</label><select id="f_priority">${Object.entries(PRI).map(([k,v])=>`<option value="${k}" ${k===(i.priority||'med')?'selected':''}>${v}</option>`).join('')}</select></div>
        <div class="field"><label>Kontaktet dato</label><input type="date" id="f_contactedAt" value="${esc(i.contactedAt||'')}"></div></div>
+     <div class="field"><label>Interesse</label><div class="seg" id="f_interest"><button data-v="yes">Interessant</button><button data-v="">Ikke vurderet</button><button data-v="no">Ikke interessant</button></div></div>
      <div class="sect"><h3>Kontaktpersoner <button class="add" id="addContact">+ tilføj</button></h3><div id="contacts"></div></div>
      <div class="sect"><h3>Næste handling</h3><div class="row">
        <div class="field" style="flex:2"><label>Hvad</label><input id="f_na_desc" value="${esc((i.nextAction||{}).desc)}" placeholder="fx Send opfølgning"></div>
@@ -421,6 +447,10 @@ function renderDrawer(){
   if(!i.nextAction)i.nextAction={desc:'',due:''};
   bindField(d.querySelector('#f_na_desc'),i.nextAction,'desc');bindField(d.querySelector('#f_na_due'),i.nextAction,'due');
   bindField(d.querySelector('#f_contactedAt'),i,'contactedAt');
+  const seg=d.querySelector('#f_interest');
+  const paintSeg=()=>seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v||'')===(i.interest||'')));
+  paintSeg();
+  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{i.interest=b.dataset.v||'';i.updatedAt=todayISO();paintSeg();scheduleSave();render();}));
   d.querySelector('#addContact').onclick=()=>{i.contacts.push({name:'',title:'',role:'',email:'',phone:'',sourceUrl:'',notes:''});scheduleSave();renderContacts();};
   d.querySelector('#addAct').onclick=()=>{i.activities.unshift({date:todayISO(),type:'note',summary:''});scheduleSave();renderActs();};
   renderContacts();renderActs();
@@ -464,6 +494,7 @@ $('#navBoard').onclick=()=>setView('board');
 $('#navList').onclick=()=>setView('list');
 $('#search').addEventListener('input',render);
 $('#country').addEventListener('change',render);
+$('#interest').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();$('#tokenModal').classList.remove('open');}});
 window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.returnValue='';}});
 
