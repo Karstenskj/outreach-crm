@@ -253,12 +253,13 @@
 
 <div class="modal" id="tokenModal"><div class="box">
   <h2>Forbind til GitHub</h2>
-  <p>Appen gemmer dine data i det private repo <code>Karstenskj/outreach-crm-data</code>. Indsæt en adgangsnøgle (fine-grained token) med adgang til det repo:</p>
+  <p>Appen gemmer dine data i det private repo <code>CPH-Agentic-ApS/outreach-crm-data</code> i firmaets organisation. Indsæt en adgangsnøgle (fine-grained token) med adgang til det repo:</p>
   <ol>
     <li><b>github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new</b></li>
+    <li>Resource owner: <b>CPH-Agentic-ApS</b></li>
     <li>Repository access: <b>Only select repositories → outreach-crm-data</b> <span style="color:var(--danger)">(vælg <b>-data</b>, ikke outreach-crm!)</span></li>
     <li>Permissions → Repository → <b>Contents: Read and write</b></li>
-    <li>Generér, kopiér nøglen (<code>github_pat_…</code>) og indsæt her:</li>
+    <li>Generér, kopiér nøglen (<code>github_pat_…</code>) og indsæt her. Står nøglen som afventende, så godkend den under CPH-Agentic-ApS → Settings → Personal access tokens.</li>
   </ol>
   <input class="input-base" id="tokenInput" placeholder="github_pat_…" autocomplete="off">
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
@@ -270,7 +271,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const CFG={owner:'Karstenskj',repo:'outreach-crm-data',path:'data.json',branch:'main'};
+const CFG={owner:'CPH-Agentic-ApS',repo:'outreach-crm-data',path:'data.json',branch:'main'};
 const STAGES=[
   {id:'research',      label:'Universiteter', color:'#8a8886'},
   {id:'contact_found', label:'Kontaktperson', color:'#0078d4'},
