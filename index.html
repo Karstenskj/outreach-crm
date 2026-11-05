@@ -87,6 +87,8 @@
   .navitem.active::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--primary)}
   .navitem .badge{margin-left:auto;font-size:12px;color:var(--text-secondary);background:var(--surface-muted);border-radius:2px;padding:0 7px;font-weight:600}
   .navitem.active .badge{background:var(--surface)}
+  .navitem .ico.ini{width:20px;justify-content:center;font-weight:700;font-size:13px}
+  .navitem.small{font-size:13px;color:var(--text-secondary)}
   .sidefoot{border-top:1px solid var(--border);padding:10px}
   .footrow{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:8px 10px;font-size:14px;color:var(--text-secondary);text-align:left}
   .footrow:hover{background:var(--surface-muted);color:var(--foreground)}
@@ -97,7 +99,7 @@
   /* Main */
   main{flex:1;display:flex;flex-direction:column;min-width:0}
   .topbar{display:flex;align-items:center;gap:10px;height:56px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--surface)}
-  .topbar h2{font-size:15px;font-weight:600;margin:0}
+  .topbar h2{font-size:15px;font-weight:600;margin:0;white-space:nowrap}
   .topbar .search{width:240px}
   .spacer{flex:1}
   .status{font-size:12px;font-weight:600;padding:5px 10px;border-radius:2px;white-space:nowrap;border:1px solid transparent}
@@ -219,6 +221,8 @@
         <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
         <span>Liste</span>
       </button>
+      <div class="navlabel">Løsning</div>
+      <div id="units"></div>
     </nav>
     <div class="sidefoot">
       <div class="conn" id="conn"><span class="dot"></span><span id="connText">Ikke forbundet</span></div>
@@ -235,7 +239,7 @@
   <!-- Main -->
   <main>
     <div class="topbar">
-      <h2 id="viewTitle">Pipeline</h2>
+      <h2 id="viewTitle">Forhåndsmerit</h2>
       <div class="spacer"></div>
       <input class="input-base search" id="search" placeholder="Søg institution / kontakt…">
       <select class="input-base" id="country" style="width:auto"><option value="">Alle lande</option></select>
@@ -282,7 +286,9 @@ const STAGES=[
   {id:'lost',          label:'Tabt',          color:'#a4262c'},
 ];
 const PRI={high:'Høj',med:'Middel',low:'Lav'};
-let state={data:{version:1,institutions:[]},sha:null,selectedId:null,dirty:false,saveTimer:null,view:'board'};
+/* Hver løsning har sin egen pipeline. Kort uden unit er fra før opdelingen og hører til forhåndsmerit. */
+const DEF_UNITS=[{id:'forhaandsmerit',name:'Forhåndsmerit'},{id:'ai-tutor',name:'AI-tutor'}];
+let state={data:{version:1,institutions:[]},sha:null,selectedId:null,dirty:false,saveTimer:null,view:'board',unit:localStorage.getItem('crm_unit')||'forhaandsmerit'};
 
 const token={get:()=>localStorage.getItem('crm_pat')||'',set:v=>localStorage.setItem('crm_pat',v)};
 const $=s=>document.querySelector(s);
@@ -303,6 +309,9 @@ function setStatus(k,t){const s=$('#status');s.className='status '+k;s.textConte
   const c=$('#conn');c.className='conn '+(k==='saved'||k==='saving'||k==='dirty'?'ok':k==='error'?'bad':'');
   $('#connText').textContent=k==='off'?'Ikke forbundet':(k==='error'?'Fejl':'Forbundet');}
 function inst(id){return state.data.institutions.find(i=>i.id===id);}
+const unitOf=i=>i.unit||'forhaandsmerit';
+function units(){return state.data.units||(state.data.units=DEF_UNITS.map(u=>({...u})));}
+function setUnit(id){state.unit=id;localStorage.setItem('crm_unit',id);}
 
 /* ===== Theme ===== */
 function isDark(){return document.documentElement.classList.contains('dark');}
@@ -349,6 +358,7 @@ async function save(){
 /* ===== filter / render ===== */
 function countries(){return [...new Set(state.data.institutions.map(i=>i.country).filter(Boolean))].sort();}
 function matches(i){const q=$('#search').value.trim().toLowerCase(),c=$('#country').value,intf=$('#interest').value,it=i.interest||'';
+  if(unitOf(i)!==state.unit)return false;
   if(c&&i.country!==c)return false;
   if(intf==='yes'&&it!=='yes')return false;
   if(intf==='no'&&it!=='no')return false;
@@ -357,13 +367,29 @@ function matches(i){const q=$('#search').value.trim().toLowerCase(),c=$('#countr
   return [i.name,i.city,...(i.contacts||[]).flatMap(k=>[k.name,k.email,k.title])].join(' ').toLowerCase().includes(q);}
 function priRank(p){return {high:0,med:1,low:2}[p||'med'];}
 
-function setView(v){state.view=v;$('#navBoard').classList.toggle('active',v==='board');$('#navList').classList.toggle('active',v==='list');
-  $('#viewTitle').textContent=v==='board'?'Pipeline':'Alle institutioner';render();}
+function setView(v){state.view=v;$('#navBoard').classList.toggle('active',v==='board');$('#navList').classList.toggle('active',v==='list');render();}
+
+function addUnit(){
+  const name=(prompt('Navn på den nye løsning')||'').trim();if(!name)return;
+  const base=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'loesning';
+  let id=base,n=2;while(units().some(u=>u.id===id))id=base+'-'+n++;
+  units().push({id,name});setUnit(id);scheduleSave();render();
+}
+function renderUnits(){
+  const box=$('#units');
+  box.innerHTML=units().map(u=>`<button class="navitem${u.id===state.unit?' active':''}" data-unit="${esc(u.id)}"><span class="ico ini">${esc(u.name[0])}</span><span>${esc(u.name)}</span><span class="badge">${state.data.institutions.filter(i=>unitOf(i)===u.id).length}</span></button>`).join('')
+    +'<button class="navitem small" id="addUnit"><span class="ico ini">+</span><span>Ny løsning</span></button>';
+  box.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{setUnit(b.dataset.unit);closeDrawer();render();});
+  $('#addUnit').onclick=addUnit;
+}
 
 function render(){
+  if(!units().some(u=>u.id===state.unit))state.unit=units()[0].id;
   const sel=$('#country'),cur=sel.value;
   sel.innerHTML='<option value="">Alle lande</option>'+countries().map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
-  $('#badgeAll').textContent=state.data.institutions.length;
+  renderUnits();
+  $('#badgeAll').textContent=state.data.institutions.filter(i=>unitOf(i)===state.unit).length;
+  $('#viewTitle').textContent=units().find(u=>u.id===state.unit).name;
   state.view==='board'?renderBoard():renderList();
 }
 
@@ -424,7 +450,7 @@ function renderList(){
 
 /* ===== CRUD ===== */
 function addInstitution(stage){
-  const i={id:uid(),name:'',country:$('#country').value||'DK',city:'',website:'',stage:stage||'research',priority:'med',
+  const i={id:uid(),unit:state.unit,name:'',country:$('#country').value||'DK',city:'',website:'',stage:stage||'research',priority:'med',
     contacts:[],activities:[],nextAction:{desc:'',due:''},contactedAt:'',interest:'',notes:'',createdAt:todayISO(),updatedAt:todayISO()};
   state.data.institutions.push(i);scheduleSave();render();openDrawer(i.id);
 }
@@ -446,6 +472,7 @@ function renderDrawer(){
      <div class="row"><div class="field"><label>Land</label><input id="f_country" value="${esc(i.country)}" placeholder="DK / SE / NO / DE"></div>
        <div class="field"><label>By</label><input id="f_city" value="${esc(i.city)}"></div></div>
      <div class="field"><label>Website</label><input id="f_website" value="${esc(i.website)}" placeholder="https://…"></div>
+     <div class="field"><label>Løsning</label><select id="f_unit">${units().map(u=>`<option value="${esc(u.id)}" ${u.id===unitOf(i)?'selected':''}>${esc(u.name)}</option>`).join('')}</select></div>
      <div class="row"><div class="field"><label>Fase</label><select id="f_stage">${STAGES.map(s=>`<option value="${s.id}" ${s.id===i.stage?'selected':''}>${s.label}</option>`).join('')}</select></div>
        <div class="field"><label>Prioritet</label><select id="f_priority">${Object.entries(PRI).map(([k,v])=>`<option value="${k}" ${k===(i.priority||'med')?'selected':''}>${v}</option>`).join('')}</select></div>
        <div class="field"><label>Kontaktet dato</label><input type="date" id="f_contactedAt" value="${esc(i.contactedAt||'')}"></div></div>
@@ -462,6 +489,7 @@ function renderDrawer(){
   [['f_name','name'],['f_country','country'],['f_city','city'],['f_website','website'],['f_notes','notes']].forEach(([id,k])=>bindField(d.querySelector('#'+id),i,k));
   d.querySelector('#f_stage').addEventListener('change',e=>{i.stage=e.target.value;if(i.stage==='contacted'&&!i.contactedAt)i.contactedAt=todayISO();i.updatedAt=todayISO();scheduleSave();render();renderDrawer();});
   d.querySelector('#f_priority').addEventListener('change',e=>{i.priority=e.target.value;scheduleSave();render();});
+  d.querySelector('#f_unit').addEventListener('change',e=>{i.unit=e.target.value;i.updatedAt=todayISO();scheduleSave();render();});
   if(!i.nextAction)i.nextAction={desc:'',due:''};
   bindField(d.querySelector('#f_na_desc'),i.nextAction,'desc');bindField(d.querySelector('#f_na_due'),i.nextAction,'due');
   bindField(d.querySelector('#f_contactedAt'),i,'contactedAt');
